@@ -1,0 +1,66 @@
+name: Build Flutter APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '11'
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.13.0'
+        channel: 'stable'
+    
+    - name: Get dependencies
+      run: flutter pub get
+    
+    - name: Analyze code
+      run: flutter analyze --no-fatal-infos
+      continue-on-error: true
+    
+    - name: Build APK
+      run: flutter build apk --release
+    
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: jizhang-app-release
+        path: build/app/outputs/flutter-apk/app-release.apk
+        
+    - name: Create Release
+      if: github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v1.0.${{ github.run_number }}
+        name: 记账助手 v1.0.${{ github.run_number }}
+        body: |
+          ## 记账助手 - 聊天风格记账应用
+          
+          ### 功能特性
+          - 🗣️ 聊天式记账界面
+          - 💰 智能消息识别
+          - 📱 简单易用的操作
+          
+          ### 安装说明
+          1. 下载 APK 文件
+          2. 在手机上允许"未知来源"安装
+          3. 安装并享受记账！
+          
+        files: build/app/outputs/flutter-apk/app-release.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
